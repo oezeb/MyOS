@@ -51,7 +51,7 @@ ___
 .set FLAGS,    0
 .set MAGIC,    0x1BADB002
 .set CHECKSUM, -(MAGIC + FLAGS)
- 
+
 .section .multiboot
 .align 4
 .long MAGIC
@@ -124,15 +124,16 @@ OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
 OUTPUT_ARCH(i386) 
 ENTRY(_start)
 SECTIONS { 
-	. = 1M; 
-	.text : { 
-		*(.header) 
-		*(.text) 
-	} 
+    . = 1M; 
+    .text : { 
+        *(.header) 
+        *(.text) 
+    } 
 }
 ```
 
 ___
+
 Now we can generate the **OS kernel** by using the _linker_ command.
 
 ```bash
@@ -167,7 +168,7 @@ As QEMU allow us to run multiboot kernel, we are then ready to run our OS.
 qemu-system-i386 -kernel header.bin
 ```
 
-![ ](runQEMU.png)
+![ ](snaps/runQEMU.png)
 
 In order to automate more tasks we add a _`make clean`_ section to delete the object file and the kernel and a _`make run`_ section  to automate all the process(build, link, run and clean)
 
@@ -179,17 +180,17 @@ ___
 ASM_FLAGS= -m32 --pipe -Wall -fasm -g -O1 -fno-stack-protector
 
 run:
-	make clean
-	make header.bin
-	qemu-system-i386 -kernel header.bin -machine type=pc-i440fx-3.1
-	make clean
+    make clean
+    make header.bin
+    qemu-system-i386 -kernel header.bin -machine type=pc-i440fx-3.1
+    make clean
 
 header.bin: header.S
-	gcc -c ${ASM_FLAGS} header.S -o header.o 
-	ld -n -T header.ld header.o -o header.bin
+    gcc -c ${ASM_FLAGS} header.S -o header.o 
+    ld -n -T header.ld header.o -o header.bin
 
 clean:
-	rm -rf header.bin header.o
+    rm -rf header.bin header.o
 ```
 
 ___
