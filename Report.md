@@ -1,200 +1,315 @@
-# Multiboot Start
+# 操作系统原理与设计
 
-**Ouedraogo Ezekiel**
+## Multiboot2myMain
 
-**PL19215001**
+---
 
-## 1. Abstract
+### 主要功能
 
-In this experiment, we will develop an operating system (OS) that can output specific content on the screen.
+---
 
-### 1.1. Multiboot Specification
+1. IO
+2. uart输出
+3. VGA输出
+4. 实现myPrint[kf]
 
-The [Multiboot Specification](https://www.gnu.org/software/grub/manual/multiboot/multiboot.html) is a specification allowing to forward important informations from a bootloader (such as Grub) to the kernel. It also specifies how a bootloader should load a kernel.
-According to the multiboot specification, an OS image must contain a Multiboot Header.  In the Multiboot Header, you should have the following fields:
+---
 
-* **magic**, a u32 used to identify the header (value: ***0x1BADB002***)
-* **flags**, a u32 field used to specify the needed features.
-* **checksum**, a u32 field whose value is ***-(magic + flags)***
+### 主流程及实现
 
-### 1.2. QEMU
+---
 
-[QEMU](https://www.qemu.org/) is a generic and open-source machine emulator and virtualizer that supports multiboot specification.
+首先根据提供的outb代码写inb
 
-Install QEMU on Linux using following commands:
+```c
+unsigned char inb(unsigned short int port_from){
+	unsigned char result;
+	__asm__ ("inb %w1, %b0" : "=a" (result) : "d" (port_from));
+	return result;
+}
 
-```cmd
-sudo apt-get install qemu
-sudo apt-get install qemu-system-i386
-```
-
-### 1.3. VGA
-
-The VGA video memory for color monitors resides at ***0xB8000***.
-Each character requires two bytes: one to hold the character and one to hold the character's display properties.
-
-Use _`movl <con>, <reg>`_ to write directly into VGA video memory.
-
-e.g., _`movl $0x2f4b2f4f, 0xB8000`_ displays “OK” on the screen.
-
-## 2. Source Code description
-
-### 2.1. Multiboot Header
-
-As required, we define the multiboot magic, flags and checksum.
-
-> _header.S_
-
-___
-
-```nasm
-.set FLAGS,    0
-.set MAGIC,    0x1BADB002
-.set CHECKSUM, -(MAGIC + FLAGS)
-
-.section .multiboot
-.align 4
-.long MAGIC
-.long FLAGS
-.long CHECKSUM
-```
-
-___
-
-### 2.2. GNU Assembler Code
-
-We write a code to display _“Hello World from Ezekiel 😉 Student Number: PL19215001”_ directly using the VGA port.
-
-> _header.S_
-
-___
-
-```nasm
-.section .text
-.global _start
-_start:
-    movl $0x2f652f48, 0xB8000   //He
-    movl $0x2f6c2f6c, 0xB8004   //ll
-    movl $0x2f202f6f, 0xB8008   //o 
-    movl $0x2f6f2f57, 0xB800C   //Wo
-    movl $0x2f6c2f72, 0xB8010   //rl
-    movl $0x2f202f64, 0xB8014   //d 
-    movl $0x2f722f66, 0xB8018   //fr
-    movl $0x2f6d2f6f, 0xB801C   //om
-    movl $0x2f452f20, 0xB8020   // E
-    movl $0x2f652f7a, 0xB8024   //ze
-    movl $0x2f692f6b, 0xB8028   //ki
-    movl $0x2f6c2f65, 0xB802C   //el
-    movl $0x2f3b2f20, 0xB8030   // ;
-    movl $0x2f202f29, 0xB8034   //) 
-    movl $0x2f742f53, 0xB8038   //St
-    movl $0x2f642f75, 0xB803C   //ud
-    movl $0x2f6e2f65, 0xB8040   //en
-    movl $0x2f202f74, 0xB8044   //t 
-    movl $0x2f752f4e, 0xB8048   //Nu
-    movl $0x2f622f6d, 0xB804C   //mb
-    movl $0x2f722f65, 0xB8050   //er
-    movl $0x2f202f3a, 0xB8054   //: 
-    movl $0x2f4c2f50, 0xB8058   //PL
-    movl $0x2f392f31, 0xB805C   //19
-    movl $0x2f312f32, 0xB8060   //21
-    movl $0x2f302f35, 0xB8064   //50
-    movl $0x2f312f30, 0xB8068   //01
-    hlt
-```
-
-___
-
-we can already compile the code using _gcc_. This will generate an object file.
-
-```bash
-gcc -c ${ASM_FLAGS} header.S -o header.o
-```
-
-### 2.3. Linker
-
-We need to link our assembly code with the multiboot header code.
-
-> _header.ld_
-
-___
-
-```bash
-OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386") 
-OUTPUT_ARCH(i386) 
-ENTRY(_start)
-SECTIONS { 
-    . = 1M; 
-    .text : { 
-        *(.header) 
-        *(.text) 
-    } 
+void outb (unsigned short int port_to, unsigned char value){
+    __asm__ __volatile__ ("outb %b0,%w1"::"a" (value),"Nd" (port_to));
 }
 ```
 
-___
+有了IO后就可以实现uart和VGA输出。
 
-Now we can generate the **OS kernel** by using the _linker_ command.
+#### _uart_
 
-```bash
-ld -n -T header.ld header.o -o header.bin
+```c
+#define uart_base 0x3F8
+
+void uart_put_char(unsigned char c){
+	outb(uart_base,c);
+}
+
+unsigned char uart_get_char(void) {
+	return inb(uart_base);
+}
+
+void uart_put_chars(char *str){ 
+	while(*str != '\0') {
+		uart_put_char(*str++);
+	}
+}
 ```
 
-### 2.4. Make
+#### _VGA_
 
-We will use a Makefile to automate the above tasks.
-
-> _Makefile_
-
-___
-
-```bash
-ASM_FLAGS= -m32 --pipe -Wall -fasm -g -O1 -fno-stack-protector
-
-header.bin: header.S
-    gcc -c ${ASM_FLAGS} header.S -o header.o 
-    ld -n -T header.ld header.o -o header.bin
+```c
+#define VIDEO_ADDRESS 0xb8000
+#define MAX_ROWS 25
+#define MAX_COLS 80
+#define WHITE_ON_BLACK 0x0f
+#define VGA_CTRL_REGISTER 0x3d4
+#define VGA_DATA_REGISTER 0x3d5
+#define VGA_OFFSET_LOW 0x0f
+#define VGA_OFFSET_HIGH 0x0e
 ```
 
-___
+接下来会用到上面的常数。
 
-## 3. Emulation
+为了在VGA上输出，要控制光标。
 
-As QEMU allow us to run multiboot kernel, we are then ready to run our OS.
+```c
+int getRow(int offset) { //get row from offset
+    return offset / (2 * MAX_COLS);
+}
 
-> Running OS
+int getOffset(int col, int row) {
+    return 2 * (row * MAX_COLS + col);
+}
 
-```bash
-qemu-system-i386 -kernel header.bin
+int newLine(int offset) { //move offset to new line
+    return getOffset(0, getRow(offset) + 1);
+}
+
+int getCursor() {
+    outb(VGA_CTRL_REGISTER, VGA_OFFSET_HIGH);
+    int offset = inb(VGA_DATA_REGISTER) << 8;
+    outb(VGA_CTRL_REGISTER, VGA_OFFSET_LOW);
+    offset += inb(VGA_DATA_REGISTER);
+    return offset * 2;
+}
+
+void setCursor(int offset) {
+    offset /= 2;
+    outb(VGA_CTRL_REGISTER, VGA_OFFSET_HIGH);
+    outb(VGA_DATA_REGISTER, (unsigned char) (offset >> 8));
+    outb(VGA_CTRL_REGISTER, VGA_OFFSET_LOW);
+    outb(VGA_DATA_REGISTER, (unsigned char) (offset & 0xff));
+}
 ```
 
-![ ](snaps/runQEMU.png)
+1. 清屏功能
 
-In order to automate more tasks we add a _`make clean`_ section to delete the object file and the kernel and a _`make run`_ section  to automate all the process(build, link, run and clean)
-
-> _Makefile_
-
-___
-
-```bash
-ASM_FLAGS= -m32 --pipe -Wall -fasm -g -O1 -fno-stack-protector
-
-run:
-    make clean
-    make header.bin
-    qemu-system-i386 -kernel header.bin -machine type=pc-i440fx-3.1
-    make clean
-
-header.bin: header.S
-    gcc -c ${ASM_FLAGS} header.S -o header.o 
-    ld -n -T header.ld header.o -o header.bin
-
-clean:
-    rm -rf header.bin header.o
+```c
+void clear_screen(void) {
+    for (int i = 0; i < MAX_COLS * MAX_ROWS; ++i) {
+        putChar(' ', i * 2, WHITE_ON_BLACK);
+    }
+    setCursor(getOffset(0, 0));
+}
 ```
 
-___
+2. 屏幕输出功能
 
-## 4. Problems encountered and their solutions
+```c
+void putChar(char character, int offset, int color) {
+    unsigned char *vidmem = (unsigned char *) VIDEO_ADDRESS;
+    vidmem[offset] = character;
+    vidmem[offset + 1] = color;
+}
 
-This experiment was very challenging since it was our first time in OS development. Most of the concepts was new to us but our big help was "Internet". Websites like [OSDev](https://osdev.org/), [intermezzos](https://intermezzos.github.io/) were very useful.
+void copyMemory(char *source, char *dest, int nbytes) {
+    int i;
+    for (i = 0; i < nbytes; i++) {
+        *(dest + i) = *(source + i);
+    }
+}
+
+int scroll(int offset) {
+    copyMemory(
+            (char *) (getOffset(0, 1) + VIDEO_ADDRESS),
+            (char *) (getOffset(0, 0) + VIDEO_ADDRESS),
+            MAX_COLS * (MAX_ROWS - 1) * 2
+    );
+
+    for (int col = 0; col < MAX_COLS; col++) {
+        putChar(' ', getOffset(col, MAX_ROWS - 1),WHITE_ON_BLACK);
+    }
+
+    return offset - 2 * MAX_COLS;
+}
+
+void append2screen(char *str,int color){
+    int offset = getCursor();
+    int i = 0;
+    while (str[i] != '\0') {
+        if (offset >= MAX_ROWS * MAX_COLS * 2) {
+            offset = scroll(offset);
+        }
+        if (str[i] == '\n') {
+            offset = newLine(offset);
+        } 
+        else {
+            putChar(str[i], offset,color);
+            offset += 2;
+        }
+        i++;
+    }
+    setCursor(offset);
+}
+```
+
+最后实现myPrint[kf]
+myPrint[kf] 是可变参数的函数所以输出前要处理好字符串。 所以利用myVsprintf来处理。
+
+```c
+char kBuf[400];
+int myPrintk(int color,const char *format, ...){
+   va_list args;
+   int size;
+   
+   va_start (args, format);
+   size = myVsprintf (&kBuf[0], 400, format, args);
+   va_end (args);
+   
+   kBuf[size]='\0';
+   append2screen(kBuf,color);
+   uart_put_chars(kBuf);
+   return size;
+}
+
+char uBuf[400];
+int myPrintf(int color,const char *format, ...){
+   va_list args;
+   int size;
+   
+   va_start (args, format);
+   size = myVsprintf (&uBuf[0], 400, format, args);
+   va_end (args);
+   
+   uBuf[size]='\0';
+   append2screen(uBuf,color);
+   uart_put_chars(uBuf);
+   return size;
+}
+
+```
+
+myVsprintf也调用了convert和myPuts。
+
+* convert把一个base进制数num转换字符串。
+* myPuts把一个处理好的字符串保存到buf里
+
+```c
+char *convert(unsigned int num, int base)  {
+	static char Representation[]= "0123456789ABCDEF";
+	static char buffer[50]; 
+	char *ptr; 
+	
+	ptr = &buffer[49]; 
+	*ptr = '\0'; 
+	
+	do 
+	{ 
+		*--ptr = Representation[num%base]; 
+		num /= base; 
+	}while(num != 0); 
+	
+	return(ptr); 
+}
+
+int myPuts(char* buf, int max, char* data) {
+	char* e = data;
+	unsigned int i = 0;
+	while(i < max && *e != '\0') {
+		*buf++ = *e++;
+		i++;
+	}
+	return i;
+}
+
+int myVsprintf(char *buf, int max, const char* format, va_list args) {
+	char *s;
+	unsigned int j;
+	unsigned int i = 0;
+	int size = 0;
+	while(i < max && format[i] != '\0') {
+		while(i < max && format[i] != '\0' && format[i] != '%' ) { 
+			*buf++ = format[i++];
+			size++;
+		}
+		
+		if(i < max && format[i] != '\0') {
+			switch(format[++i]) {
+				case 'c' :
+					j = va_arg(args,int);		//Fetch char argument				
+					*buf++ = j;
+					size++;
+					break; 
+				
+				case 'd' : 
+					j = va_arg(args,int); 		//Fetch Decimal/Integer argument
+					if(j<0) { 
+						j = -j;
+						*buf++ = '-';
+					}
+					j = myPuts(buf, max-i, convert(j,10));
+					buf+=j;
+					size+=j;
+					break; 
+						
+				case 'o': 
+					j = va_arg(args,unsigned int); //Fetch Octal representation
+					j = myPuts(buf, max-i, convert(j,8));
+					buf+=j;
+					size+=j;
+					break; 
+				
+				case 's': 
+					s = va_arg(args,char *); 		//Fetch string
+					j = myPuts(buf, max-i, s);
+					buf+=j;
+					size+=j;
+					break; 
+						
+				case 'x': 
+					j = va_arg(args,unsigned int); //Fetch Hexadecimal representation
+					j = myPuts(buf, max-i, convert(j,16));
+					buf += j;
+					size +=j;
+					break;
+			}
+			i++;
+		}
+	}
+	return size;	
+}
+```
+
+---
+
+### 运行结果
+
+---
+
+```c
+void myMain(void){    
+    int i;
+    
+    myPrintk(0x7,"main\n");
+    for (i=1;i<30;i++) myPrintf(i,"%d\n",i);
+    return;
+}
+```
+
+#### UART
+
+![ ](snaps/uart.png)
+
+#### VGA
+
+![ ](snaps/vga.png)
