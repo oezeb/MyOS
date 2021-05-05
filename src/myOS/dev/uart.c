@@ -1,22 +1,29 @@
-/* 
- * 与 UART 相关的输出
- * 调用inb和outb函数，实现下面的uart的三个函数
- */
-extern unsigned char inb(unsigned short int port_from);
-extern void outb (unsigned short int port_to, unsigned char value);
+#include "uart.h"
+#include "io.h"
 
-#define uart_base 0x3F8
+// unsigned char uart_get_char(void)
+// {
+// }
 
-void uart_put_char(unsigned char c){
-	outb(uart_base,c);
+void uart_put_char(unsigned char c)
+{
+    if (c == '\n') {
+        outb(uart_base, '\r');
+        outb(uart_base, '\n');
+        return;
+    }
+    outb(uart_base, c);
+}
+
+void uart_put_chars(char* str)
+{
+    for (char* p = str; *p; ++p) {
+        uart_put_char(*p);
+    }
 }
 
 unsigned char uart_get_char(void) {
-	return inb(uart_base);
-}
-
-void uart_put_chars(char *str){ 
-	while(*str != '\0') {
-		uart_put_char(*str++);
-	}
+    while (!(inb(uart_base+5)&1));
+    
+    return inb(uart_base);
 }

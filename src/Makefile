@@ -1,10 +1,10 @@
-# 注意替换SRC_RT，其他内容不需要修改
-SRC_RT=/home/ubuntu/Desktop/OS-lab2/src
-#$(shell pwd)
+SRC_RT=$(shell pwd)
 
+# CROSS_COMPILE=i686-elf-
 CROSS_COMPILE=
 ASM_FLAGS= -m32 --pipe -Wall -fasm -g -O1 -fno-stack-protector	
 C_FLAGS =  -m32 -fno-stack-protector -g
+INCLUDE_PATH = myOS/include
 
 .PHONY: all
 all: output/myOS.elf
@@ -24,7 +24,7 @@ output/%.o : %.S
 
 output/%.o : %.c
 	@mkdir -p $(dir $@)
-	@${CROSS_COMPILE}gcc ${C_FLAGS} -c -o $@ $<
+	@${CROSS_COMPILE}gcc ${C_FLAGS} -I${INCLUDE_PATH} -c -o $@ $<
 
 clean:
 	rm -rf output

@@ -1,5 +1,3 @@
-# 需要填写一处！
-# 其余部分无须修改
 STACK_SIZE =	0x1000	# Size of heap and stack. 4KB
 
 /* ===== code32 =========================== */
@@ -15,9 +13,9 @@ dead:	jmp dead			# Never here
 
 # Set up the stack
 establish_stack:
-	#movl	$_bss_end %eax		# eax = end of bss/start of heap #填入正确的内容
-	#addl	$STACK_SIZE, %eax	# make room for stack
-	#andl	$0xffffffc0, %eax	# align it on 16 byte boundary
+	; movl	_end, %eax		# eax = end of bss/start of heap #填入正确的内容
+	; addl	$STACK_SIZE, %eax	# make room for stack
+	; andl	$0xffffffc0, %eax	# align it on 16 byte boundary
 	movl	$0x80000, %eax	
 	
 	movl	%eax, %esp		# set stack pointer
@@ -36,6 +34,10 @@ zero_bss:
 	repne			            	# while ecx != 0
 	stosl				            # clear a long in the bss
 
+
+setup_idtptr:
+	call setup_idt
+	lidt idtptr
 
 # Transfer control to main
 to_main:	

@@ -23,9 +23,9 @@
 
 ```c
 unsigned char inb(unsigned short int port_from){
-	unsigned char result;
-	__asm__ ("inb %w1, %b0" : "=a" (result) : "d" (port_from));
-	return result;
+    unsigned char result;
+    __asm__ ("inb %w1, %b0" : "=a" (result) : "d" (port_from));
+    return result;
 }
 
 void outb (unsigned short int port_to, unsigned char value){
@@ -41,17 +41,17 @@ void outb (unsigned short int port_to, unsigned char value){
 #define uart_base 0x3F8
 
 void uart_put_char(unsigned char c){
-	outb(uart_base,c);
+    outb(uart_base,c);
 }
 
 unsigned char uart_get_char(void) {
-	return inb(uart_base);
+    return inb(uart_base);
 }
 
 void uart_put_chars(char *str){ 
-	while(*str != '\0') {
-		uart_put_char(*str++);
-	}
+    while(*str != '\0') {
+        uart_put_char(*str++);
+    }
 }
 ```
 
@@ -171,11 +171,11 @@ char kBuf[400];
 int myPrintk(int color,const char *format, ...){
    va_list args;
    int size;
-   
+
    va_start (args, format);
    size = myVsprintf (&kBuf[0], 400, format, args);
    va_end (args);
-   
+
    kBuf[size]='\0';
    append2screen(kBuf,color);
    uart_put_chars(kBuf);
@@ -186,17 +186,16 @@ char uBuf[400];
 int myPrintf(int color,const char *format, ...){
    va_list args;
    int size;
-   
+
    va_start (args, format);
    size = myVsprintf (&uBuf[0], 400, format, args);
    va_end (args);
-   
+
    uBuf[size]='\0';
    append2screen(uBuf,color);
    uart_put_chars(uBuf);
    return size;
 }
-
 ```
 
 myVsprintf也调用了convert和myPuts。
@@ -206,87 +205,87 @@ myVsprintf也调用了convert和myPuts。
 
 ```c
 char *convert(unsigned int num, int base)  {
-	static char Representation[]= "0123456789ABCDEF";
-	static char buffer[50]; 
-	char *ptr; 
-	
-	ptr = &buffer[49]; 
-	*ptr = '\0'; 
-	
-	do 
-	{ 
-		*--ptr = Representation[num%base]; 
-		num /= base; 
-	}while(num != 0); 
-	
-	return(ptr); 
+    static char Representation[]= "0123456789ABCDEF";
+    static char buffer[50]; 
+    char *ptr; 
+
+    ptr = &buffer[49]; 
+    *ptr = '\0'; 
+
+    do 
+    { 
+        *--ptr = Representation[num%base]; 
+        num /= base; 
+    }while(num != 0); 
+
+    return(ptr); 
 }
 
 int myPuts(char* buf, int max, char* data) {
-	char* e = data;
-	unsigned int i = 0;
-	while(i < max && *e != '\0') {
-		*buf++ = *e++;
-		i++;
-	}
-	return i;
+    char* e = data;
+    unsigned int i = 0;
+    while(i < max && *e != '\0') {
+        *buf++ = *e++;
+        i++;
+    }
+    return i;
 }
 
 int myVsprintf(char *buf, int max, const char* format, va_list args) {
-	char *s;
-	unsigned int j;
-	unsigned int i = 0;
-	int size = 0;
-	while(i < max && format[i] != '\0') {
-		while(i < max && format[i] != '\0' && format[i] != '%' ) { 
-			*buf++ = format[i++];
-			size++;
-		}
-		
-		if(i < max && format[i] != '\0') {
-			switch(format[++i]) {
-				case 'c' :
-					j = va_arg(args,int);		//Fetch char argument				
-					*buf++ = j;
-					size++;
-					break; 
-				
-				case 'd' : 
-					j = va_arg(args,int); 		//Fetch Decimal/Integer argument
-					if(j<0) { 
-						j = -j;
-						*buf++ = '-';
-					}
-					j = myPuts(buf, max-i, convert(j,10));
-					buf+=j;
-					size+=j;
-					break; 
-						
-				case 'o': 
-					j = va_arg(args,unsigned int); //Fetch Octal representation
-					j = myPuts(buf, max-i, convert(j,8));
-					buf+=j;
-					size+=j;
-					break; 
-				
-				case 's': 
-					s = va_arg(args,char *); 		//Fetch string
-					j = myPuts(buf, max-i, s);
-					buf+=j;
-					size+=j;
-					break; 
-						
-				case 'x': 
-					j = va_arg(args,unsigned int); //Fetch Hexadecimal representation
-					j = myPuts(buf, max-i, convert(j,16));
-					buf += j;
-					size +=j;
-					break;
-			}
-			i++;
-		}
-	}
-	return size;	
+    char *s;
+    unsigned int j;
+    unsigned int i = 0;
+    int size = 0;
+    while(i < max && format[i] != '\0') {
+        while(i < max && format[i] != '\0' && format[i] != '%' ) { 
+            *buf++ = format[i++];
+            size++;
+        }
+
+        if(i < max && format[i] != '\0') {
+            switch(format[++i]) {
+                case 'c' :
+                    j = va_arg(args,int);        //Fetch char argument                
+                    *buf++ = j;
+                    size++;
+                    break; 
+
+                case 'd' : 
+                    j = va_arg(args,int);         //Fetch Decimal/Integer argument
+                    if(j<0) { 
+                        j = -j;
+                        *buf++ = '-';
+                    }
+                    j = myPuts(buf, max-i, convert(j,10));
+                    buf+=j;
+                    size+=j;
+                    break; 
+
+                case 'o': 
+                    j = va_arg(args,unsigned int); //Fetch Octal representation
+                    j = myPuts(buf, max-i, convert(j,8));
+                    buf+=j;
+                    size+=j;
+                    break; 
+
+                case 's': 
+                    s = va_arg(args,char *);         //Fetch string
+                    j = myPuts(buf, max-i, s);
+                    buf+=j;
+                    size+=j;
+                    break; 
+
+                case 'x': 
+                    j = va_arg(args,unsigned int); //Fetch Hexadecimal representation
+                    j = myPuts(buf, max-i, convert(j,16));
+                    buf += j;
+                    size +=j;
+                    break;
+            }
+            i++;
+        }
+    }
+    return size;    
 }
 ```
 
@@ -299,7 +298,7 @@ int myVsprintf(char *buf, int max, const char* format, va_list args) {
 ```c
 void myMain(void){    
     int i;
-    
+
     myPrintk(0x7,"main\n");
     for (i=1;i<30;i++) myPrintf(i,"%d\n",i);
     return;
